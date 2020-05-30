@@ -48,33 +48,59 @@ class Network:
         Defaults to CPU as device for use in the workspace.
         Synchronous requests made within.
         """
+        ### Load the model ###
         model_xml = model
-        model_bin = os.path.splitex(model_xml)[0] + ".bin"
+        model_bin = os.path.splitext(model_xml)[0] + ".bin"
+
+        # Initialize the plugin
+        self.plugin = IECore()
         
-        ### TODO: Load the model ###
-        ### TODO: Check for supported layers ###
-        ### TODO: Add any necessary extensions ###
-        ### TODO: Return the loaded inference plugin ###
-        ### Note: You may need to update the function parameters. ###
+        # Read the IR as a IENetwork
+        self.network = IENetwork(model=model_xml, weights=model_bin)
+
+        ### Get the supported layers of the network
+        supported_layers = plugin.query_network(network=self.network, device_name="CPU")
+            
+        ### Check for any unsupported layers
+        unsupported_layers = [layer for layer in self.network.layers.keys() if layer not in supported_layers]
+            
+        ### Add any necessary extensions ###
+        if len(unsupported_layers):
+            self.plugin.add_extension(cpu_extension, device)
+
+        # Load the IENetwork into the plugin
+        self.exec_network = self.plugin.load_network(self.network, device)
+
+        # Get the input layer
+        self.input_blob = next(iter(self.network.inputs))
+        self.output_blob = next(iter(self.network.outputs))
+
         return
 
     def get_input_shape(self):
-        ### TODO: Return the shape of the input layer ###
-        return
+        '''
+        Gets the input shape of the network
+        '''
+        return self.network.inputs[self.input_blob].shape
 
-    def exec_net(self):
-        ### TODO: Start an asynchronous request ###
-        ### TODO: Return any necessary information ###
-        ### Note: You may need to update the function parameters. ###
+    def exec_net(self, image):
+        '''
+        Makes an asynchronous inference request, given an input image.
+        '''
+        self.exec_network.start_async(request_id=0, 
+            inputs={self.input_blob: image})
         return
 
     def wait(self):
-        ### TODO: Wait for the request to be complete. ###
-        ### TODO: Return any necessary information ###
-        ### Note: You may need to update the function parameters. ###
-        return
+        '''
+        Checks the status of the inference request.
+        '''
+        ### Wait for the request to be complete.wait(-1) ###
+        status = self.exec_network.requests[0].wait(-1)
+        return status
 
     def get_output(self):
-        ### TODO: Extract and return the output results
-        ### Note: You may need to update the function parameters. ###
-        return
+        '''
+        Returns a list of the results for the output layer of the network.
+        '''
+        return self.exec_network.requests[0].outputs[self.output_blob]
