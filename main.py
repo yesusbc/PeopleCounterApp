@@ -101,12 +101,27 @@ def infer_on_stream(args, client):
     cap = cv2.VideoCapture(args.input)
     cap.open(args.input)
     
+    current_count = 0
+    total_count = 0
+    duration = 0
+    
+    person_in_frame = False
+    count = 0
+    none_count = 0
+    detected = 0
+    time_tracker = 0
+    time_avg = 0
+    
+    
     ### Loop until stream is over ###
     while cap.isOpened():
         ### Read from the video capture ###
         flag, frame = cap.read()
         if not flag:
             break
+            
+        h = frame.shape[0]
+        w = frame.shape[1]
         
         ### Pre-process the image as needed ###
         p_frame = cv2.resize(frame, (net_input_shape[3], net_input_shape[2]))
@@ -120,20 +135,53 @@ def infer_on_stream(args, client):
         if infer_network.wait(request_id) == 0:
             ### Get the results of the inference request ###
             result = infer_network.get_output(request_id)
-            # frame = cv2.rectangle(frame, p1, p2, (0, 255, 0), 3)
-            ### TODO: Extract any desired stats from the results ###
-                    
-            ### TODO: Calculate and send relevant information on ###
+            probs = result[0, 0, :, 2]
+
+            ### Extract any desired stats from the results ###
+            ### Calculate and send relevant information on ###
+            current_count = 0
+            for i, p in enumerate(probs):
+                if p > prob_threshold:
+                    current_count += 1
+                    box = result[0, 0, i, 3:]
+                    p1 = (int(box[0] * w), int(box[1] * h))
+                    p2 = (int(box[2] * w), int(box[3] * h))
+                    frame = cv2.rectangle(frame, p1, p2, (0, 255, 0), 3)
+                    detected = 1
+            
+            if detected:
+                count += 1
+                none_count = 0
+            else:
+                none_count += 1
+                count = 0
+            
+            detected = 0
+                
+            if count == 5 and person_in_frame == False:
+                person_in_frame = True
+                current_count = 1
+                time_tracker = time.time()
+                count = 0
+                none_count = 0
+            elif none_count == 5 and person_in_frame == True:
+                person_in_frame = False
+                current_count = 0
+                time_tracker = time.time() - time_tracker
+                count = 0
+                none_count = 0
+                total_count += 1
+                time_avg += time_tracker
+                time_tracker = 0
+                duration = round(time_avg / total_count)
+                
             ### current_count, total_count and duration to the MQTT server ###
             ### Topic "person": keys of "count" and "total" ###
             ### Topic "person/duration": key of "duration" ###
             
-            client.publish('person', payload=json.dumps({'count': 1, 'total': 2}),qos=0, retain=False)
-            if 3 is not None:
-                client.publish('person/duration',
-                               payload=json.dumps({'duration': 4}),
-                               qos=0, retain=False)
-            
+            client.publish("person", json.dumps({"count": current_count, "total": total_count})) 
+            if duration:
+                client.publish("person/duration", json.dumps({"duration": duration}))
 
         ### Send the frame to the FFMPEG server ###
         sys.stdout.buffer.write(frame)  
