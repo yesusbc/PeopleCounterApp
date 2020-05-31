@@ -59,7 +59,7 @@ class Network:
         self.network = IENetwork(model=model_xml, weights=model_bin)
 
         ### Get the supported layers of the network
-        supported_layers = plugin.query_network(network=self.network, device_name="CPU")
+        supported_layers = self.plugin.query_network(network=self.network, device_name="CPU")
             
         ### Check for any unsupported layers
         unsupported_layers = [layer for layer in self.network.layers.keys() if layer not in supported_layers]
@@ -83,24 +83,24 @@ class Network:
         '''
         return self.network.inputs[self.input_blob].shape
 
-    def exec_net(self, image):
+    def exec_net(self, request_id, image):
         '''
         Makes an asynchronous inference request, given an input image.
         '''
-        self.exec_network.start_async(request_id=0, 
+        self.exec_network.start_async(request_id=request_id, 
             inputs={self.input_blob: image})
         return
 
-    def wait(self):
+    def wait(self, request_id):
         '''
         Checks the status of the inference request.
         '''
         ### Wait for the request to be complete.wait(-1) ###
-        status = self.exec_network.requests[0].wait(-1)
+        status = self.exec_network.requests[request_id].wait(-1)
         return status
 
-    def get_output(self):
+    def get_output(self, request_id):
         '''
         Returns a list of the results for the output layer of the network.
         '''
-        return self.exec_network.requests[0].outputs[self.output_blob]
+        return self.exec_network.requests[request_id].outputs[self.output_blob]

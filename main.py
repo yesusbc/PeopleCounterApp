@@ -86,39 +86,64 @@ def infer_on_stream(args, client):
     :param client: MQTT client
     :return: None
     """
+    request_id = 0
+    
     # Initialise the class
     infer_network = Network()
     # Set Probability threshold for detections
     prob_threshold = args.prob_threshold
 
     ### Load the model through `infer_network` ###
-    infer_network.load_model(args.m, args.d, CPU_EXTENSION)
+    infer_network.load_model(args.model, args.device, CPU_EXTENSION)
+    net_input_shape = infer_network.get_input_shape()
     
-    ### TODO: Handle the input stream ###
+    ### Handle the input stream ###
+    cap = cv2.VideoCapture(args.input)
+    cap.open(args.input)
     
-    
-    ### TODO: Loop until stream is over ###
-
-        ### TODO: Read from the video capture ###
-
-        ### TODO: Pre-process the image as needed ###
-
-        ### TODO: Start asynchronous inference for specified request ###
-
-        ### TODO: Wait for the result ###
-
-            ### TODO: Get the results of the inference request ###
-
+    ### Loop until stream is over ###
+    while cap.isOpened():
+        ### Read from the video capture ###
+        flag, frame = cap.read()
+        if not flag:
+            break
+        
+        ### Pre-process the image as needed ###
+        p_frame = cv2.resize(frame, (net_input_shape[3], net_input_shape[2]))
+        p_frame = p_frame.transpose((2,0,1))
+        p_frame.reshape(1, 3, net_input_shape[2], net_input_shape[3])
+        
+        ### Start asynchronous inference for specified request ###
+        infer_network.exec_net(request_id, p_frame)
+        
+        ### Wait for the result ###
+        if infer_network.wait(request_id) == 0:
+            ### Get the results of the inference request ###
+            result = infer_network.get_output(request_id)
+            # frame = cv2.rectangle(frame, p1, p2, (0, 255, 0), 3)
             ### TODO: Extract any desired stats from the results ###
-
+                    
             ### TODO: Calculate and send relevant information on ###
             ### current_count, total_count and duration to the MQTT server ###
             ### Topic "person": keys of "count" and "total" ###
             ### Topic "person/duration": key of "duration" ###
+            
+            client.publish('person', payload=json.dumps({'count': 1, 'total': 2}),qos=0, retain=False)
+            if 3 is not None:
+                client.publish('person/duration',
+                               payload=json.dumps({'duration': 4}),
+                               qos=0, retain=False)
+            
 
-        ### TODO: Send the frame to the FFMPEG server ###
+        ### Send the frame to the FFMPEG server ###
+        sys.stdout.buffer.write(frame)  
+        sys.stdout.flush()
 
         ### TODO: Write an output image if `single_image_mode` ###
+        
+    # Release the capture and destroy any OpenCV windows
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def main():
