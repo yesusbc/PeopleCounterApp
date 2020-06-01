@@ -95,7 +95,10 @@ def infer_on_stream(args, client):
 
     ### Load the model through `infer_network` ###
     infer_network.load_model(args.model, args.device, CPU_EXTENSION)
-    net_input_shape = infer_network.get_input_shape()
+    network_shape = infer_network.get_input_shape()
+    input_shape = network_shape['image_tensor']
+    
+    
     
     ### Handle the input stream ###
     cap = cv2.VideoCapture(args.input)
@@ -124,12 +127,16 @@ def infer_on_stream(args, client):
         w = frame.shape[1]
         
         ### Pre-process the image as needed ###
-        p_frame = cv2.resize(frame, (net_input_shape[3], net_input_shape[2]))
+        p_frame = cv2.resize(frame, (input_shape[3], input_shape[2]))
         p_frame = p_frame.transpose((2,0,1))
-        p_frame.reshape(1, 3, net_input_shape[2], net_input_shape[3])
+        # raise RuntimeError(p_frame.shape)
+        p_frame.reshape(1, *p_frame.shape)
+
+        
+        net_input = {'image_tensor': p_frame,'image_info': (600,600,1)}
         
         ### Start asynchronous inference for specified request ###
-        infer_network.exec_net(request_id, p_frame)
+        infer_network.exec_net(request_id, net_input)
         
         ### Wait for the result ###
         if infer_network.wait(request_id) == 0:

@@ -81,14 +81,18 @@ class Network:
         '''
         Gets the input shape of the network
         '''
-        return self.network.inputs[self.input_blob].shape
+        input_shapes = {}
+        for inp in self.network.inputs:
+            input_shapes[inp] = (self.network.inputs[inp].shape)
+        return input_shapes
+        # return self.network.inputs[self.input_blob].shape
 
-    def exec_net(self, request_id, image):
+    def exec_net(self, request_id, net_input):
         '''
         Makes an asynchronous inference request, given an input image.
         '''
         self.exec_network.start_async(request_id=request_id, 
-            inputs={self.input_blob: image})
+            inputs=net_input)
         return
 
     def wait(self, request_id):
