@@ -37,6 +37,7 @@ You will choose a model to use and convert it with the Model Optimizer.
 ## Setup
 
 ### Install Intel® Distribution of OpenVINO™ toolkit
+https://docs.openvinotoolkit.org/latest/index.html
 
 ### Add a Person Detection Model
 You could download any model of your selection and then convert it to an OpenVino Intermediate Representation
