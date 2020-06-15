@@ -38,6 +38,14 @@ You will choose a model to use and convert it with the Model Optimizer.
 
 ### Install Intel® Distribution of OpenVINO™ toolkit
 
+### Add a Person Detection Model
+You could download any model of your selection and then convert it to an OpenVino Intermediate Representation
+https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_Converting_Model.html
+Follow that link for extra information
+
+Or you can use any of the already pretained models offer by Intel. As a recommendation I used:
+https://docs.openvinotoolkit.org/latest/_models_intel_person_detection_retail_0013_description_person_detection_retail_0013.html
+
 ### Install Nodejs and its dependencies
 
 Utilize the classroom workspace, or refer to the relevant instructions for your operating system for this step.
