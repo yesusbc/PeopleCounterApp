@@ -74,18 +74,19 @@ class Network:
         # Get the input layer
         self.input_blob = next(iter(self.network.inputs))
         self.output_blob = next(iter(self.network.outputs))
-
         return
 
+    def get_input_name(self):
+        '''
+        Gets the input name of the network
+        '''
+        return self.input_blob
+    
     def get_input_shape(self):
         '''
         Gets the input shape of the network
         '''
-        input_shapes = {}
-        for inp in self.network.inputs:
-            input_shapes[inp] = (self.network.inputs[inp].shape)
-        return input_shapes
-        # return self.network.inputs[self.input_blob].shape
+        return self.network.inputs[self.input_blob].shape
 
     def exec_net(self, request_id, net_input):
         '''

@@ -71,7 +71,9 @@ def build_argparser():
 
 
 def connect_mqtt():
-    ### Connect to the MQTT client ###
+    """
+    Connect to the MQTT client
+    """
     client = mqtt.Client()
     client.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
     return client
@@ -90,15 +92,14 @@ def infer_on_stream(args, client):
     
     # Initialise the class
     infer_network = Network()
+    
     # Set Probability threshold for detections
     prob_threshold = args.prob_threshold
 
     ### Load the model through `infer_network` ###
     infer_network.load_model(args.model, args.device, CPU_EXTENSION)
-    network_shape = infer_network.get_input_shape()
-    input_shape = network_shape['image_tensor']
-    
-    
+    input_shape = infer_network.get_input_shape()  
+    input_name = infer_network.get_input_name()
     
     ### Handle the input stream ###
     cap = cv2.VideoCapture(args.input)
@@ -108,13 +109,12 @@ def infer_on_stream(args, client):
     total_count = 0
     duration = 0
     
-    person_in_frame = False
+    is_person_in_frame = False
     count = 0
     none_count = 0
     detected = 0
     time_tracker = 0
     time_avg = 0
-    
     
     ### Loop until stream is over ###
     while cap.isOpened():
@@ -129,14 +129,12 @@ def infer_on_stream(args, client):
         ### Pre-process the image as needed ###
         p_frame = cv2.resize(frame, (input_shape[3], input_shape[2]))
         p_frame = p_frame.transpose((2,0,1))
-        # raise RuntimeError(p_frame.shape)
         p_frame.reshape(1, *p_frame.shape)
-
         
-        net_input = {'image_tensor': p_frame,'image_info': (600,600,1)}
+        input_dict = {input_name : p_frame}
         
         ### Start asynchronous inference for specified request ###
-        infer_network.exec_net(request_id, net_input)
+        infer_network.exec_net(request_id, input_dict)
         
         ### Wait for the result ###
         if infer_network.wait(request_id) == 0:
@@ -156,6 +154,7 @@ def infer_on_stream(args, client):
                     frame = cv2.rectangle(frame, p1, p2, (0, 255, 0), 3)
                     detected = 1
             
+            # A repeated amount of frames will confirm if the person is detected or not
             if detected:
                 count += 1
                 none_count = 0
@@ -165,14 +164,16 @@ def infer_on_stream(args, client):
             
             detected = 0
                 
-            if count == 5 and person_in_frame == False:
-                person_in_frame = True
+            # There was no person in frame, but now there is so start time and count person
+            if count == 5 and is_person_in_frame == False:
+                is_person_in_frame = True
                 current_count = 1
                 time_tracker = time.time()
                 count = 0
                 none_count = 0
-            elif none_count == 5 and person_in_frame == True:
-                person_in_frame = False
+            # There was a person in frame, now there is not, stop time and reset counter
+            elif none_count == 5 and is_person_in_frame == True:
+                is_person_in_frame = False
                 current_count = 0
                 time_tracker = time.time() - time_tracker
                 count = 0
