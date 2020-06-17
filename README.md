@@ -46,6 +46,10 @@ Follow that link for extra information
 
 Or you can use any of the already pretained models offer by Intel. As a recommendation I used:
 https://docs.openvinotoolkit.org/latest/_models_intel_person_detection_retail_0013_description_person_detection_retail_0013.html
+ ```
+wget "model-url
+tar -xvf “folder”.tar.gz
+ ```
 
 ### Install Nodejs and its dependencies
 
