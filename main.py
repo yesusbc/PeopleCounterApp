@@ -89,6 +89,22 @@ def infer_on_stream(args, client):
     :return: None
     """
     request_id = 0
+
+    # Flags
+    is_person_in_frame = False
+    detection_in_frame = 0
+    single_image_mode = False
+    
+    # Counters
+    none_detection_counter = 0
+    frame_detection_counter = 0
+    last_count_of_people_in_frame = 0
+    total_people_count = 0
+
+    # Time trackers
+    time_tracker = 0
+    time_avg = 0
+    duration = 0
     
     # Initialise the class
     infer_network = Network()
@@ -96,98 +112,113 @@ def infer_on_stream(args, client):
     # Set Probability threshold for detections
     prob_threshold = args.prob_threshold
 
-    ### Load the model through `infer_network` ###
+    load_time_start = time.time()
+    # Load the model through `infer_network` 
     infer_network.load_model(args.model, args.device, CPU_EXTENSION)
+    load_time_total = time.time() - load_time_start
+    
+    # network_shape = infer_network.get_input_shape()    # Faster RCNN Model
+    # input_shape = network_shape['image_tensor']    # Faster RCNN Model
     input_shape = infer_network.get_input_shape()  
     input_name = infer_network.get_input_name()
     
-    ### Handle the input stream ###
-    cap = cv2.VideoCapture(args.input)
-    cap.open(args.input)
+    # Handle the input stream
+    if args.input == "CAM":
+        # Checks for Webcam
+        # input_file = 0
+        input_file = -1
+    elif args.input.endswith(".jpg") or args.input.endswith(".png"):
+        # Checks for input image 
+        single_image_mode = True
+        input_file = args.input
+    else:
+        # Checks for input video
+        input_file = args.input
+        
+    cap = cv2.VideoCapture(input_file)
+    if input_file:
+        cap.open(input_file)
     
-    current_count = 0
-    total_count = 0
-    duration = 0
-    
-    is_person_in_frame = False
-    count = 0
-    none_count = 0
-    detected = 0
-    time_tracker = 0
-    time_avg = 0
-    
-    ### Loop until stream is over ###
+    # Loop until stream is over
     while cap.isOpened():
-        ### Read from the video capture ###
+        # Read from the video capture
         flag, frame = cap.read()
         if not flag:
             break
-            
-        h = frame.shape[0]
-        w = frame.shape[1]
-        
-        ### Pre-process the image as needed ###
+          
+        # Pre-process the image as needed
         p_frame = cv2.resize(frame, (input_shape[3], input_shape[2]))
         p_frame = p_frame.transpose((2,0,1))
         p_frame.reshape(1, *p_frame.shape)
         
+        # input_dict = {'image_tensor': p_frame,'image_info': (600,600,1)}    # Faster RCNN Model
         input_dict = {input_name : p_frame}
         
-        ### Start asynchronous inference for specified request ###
+        infer_start_time = time.time()
+        # Start asynchronous inference for specified request
         infer_network.exec_net(request_id, input_dict)
         
-        ### Wait for the result ###
+        # Wait for the result...
         if infer_network.wait(request_id) == 0:
-            ### Get the results of the inference request ###
+            # Get the results of the inference request
             result = infer_network.get_output(request_id)
             probs = result[0, 0, :, 2]
 
-            ### Extract any desired stats from the results ###
-            ### Calculate and send relevant information on ###
-            current_count = 0
-            for i, p in enumerate(probs):
-                if p > prob_threshold:
-                    current_count += 1
-                    box = result[0, 0, i, 3:]
+            # Extract predictions and draw bounding boxes
+            people_in_frame = 0
+            h = frame.shape[0]
+            w = frame.shape[1]
+            for idx, prob in enumerate(probs):
+                if prob > prob_threshold:
+                    people_in_frame += 1
+                    box = result[0, 0, idx, 3:]
                     p1 = (int(box[0] * w), int(box[1] * h))
                     p2 = (int(box[2] * w), int(box[3] * h))
                     frame = cv2.rectangle(frame, p1, p2, (0, 255, 0), 3)
-                    detected = 1
+                    detection_in_frame = True
+                    if last_count_of_people_in_frame < people_in_frame:
+                        last_count_of_people_in_frame = people_in_frame
+                        
+            infer_total_time = time.time() - infer_start_time
             
             # A repeated amount of frames will confirm if the person is detected or not
-            if detected:
-                count += 1
-                none_count = 0
+            if detection_in_frame:
+                frame_detection_counter += 1
+                none_detection_counter = 0
             else:
-                none_count += 1
-                count = 0
-            
-            detected = 0
+                none_detection_counter += 1
+                frame_detection_counter = 0
                 
-            # There was no person in frame, but now there is so start time and count person
-            if count == 5 and is_person_in_frame == False:
+            # Reset flag
+            detection_in_frame = False
+                
+            
+            if frame_detection_counter == 5 and is_person_in_frame == False:
+                # There was no people at frame, but now there is so start timer and count person
                 is_person_in_frame = True
-                current_count = 1
                 time_tracker = time.time()
-                count = 0
-                none_count = 0
-            # There was a person in frame, now there is not, stop time and reset counter
-            elif none_count == 5 and is_person_in_frame == True:
+                # Reset counters
+                frame_detection_counter = 0
+                none_detection_counter = 0
+            
+            elif none_detection_counter == 5 and is_person_in_frame == True:
+                # There was people in frame, now there is not, stop timer and reset counter
+                # Add # of people to counter
                 is_person_in_frame = False
-                current_count = 0
+                total_people_count += last_count_of_people_in_frame
                 time_tracker = time.time() - time_tracker
-                count = 0
-                none_count = 0
-                total_count += 1
                 time_avg += time_tracker
+                duration = round(time_avg / total_people_count)
+                # Reset counters
+                frame_detection_counter = 0
+                none_detection_counter = 0
                 time_tracker = 0
-                duration = round(time_avg / total_count)
                 
             ### current_count, total_count and duration to the MQTT server ###
             ### Topic "person": keys of "count" and "total" ###
             ### Topic "person/duration": key of "duration" ###
             
-            client.publish("person", json.dumps({"count": current_count, "total": total_count})) 
+            client.publish("person", json.dumps({"count": people_in_frame, "total": total_people_count})) 
             if duration:
                 client.publish("person/duration", json.dumps({"duration": duration}))
 
@@ -195,8 +226,11 @@ def infer_on_stream(args, client):
         sys.stdout.buffer.write(frame)  
         sys.stdout.flush()
 
-        ### TODO: Write an output image if `single_image_mode` ###
-        
+        # Write an output image if `single_image_mode`
+        if single_image_mode:
+            cv2.imwrite("images/output.jpg", frame)
+            print("Total inference time: {0}", infer_total_time)
+            print("Model time loading: {0}", load_time_total)
     # Release the capture and destroy any OpenCV windows
     cap.release()
     cv2.destroyAllWindows()

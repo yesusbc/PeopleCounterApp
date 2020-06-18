@@ -58,15 +58,22 @@ class Network:
         # Read the IR as a IENetwork
         self.network = IENetwork(model=model_xml, weights=model_bin)
 
+        ### Add any necessary extensions ###
+        if cpu_extension and device == "CPU":
+            self.plugin.add_extension(cpu_extension, device)
+        
         ### Get the supported layers of the network
-        supported_layers = self.plugin.query_network(network=self.network, device_name="CPU")
+        supported_layers = self.plugin.query_network(network=self.network, device_name=device)
             
         ### Check for any unsupported layers
         unsupported_layers = [layer for layer in self.network.layers.keys() if layer not in supported_layers]
             
-        ### Add any necessary extensions ###
+        ### if there are unsupported layers, notify ###
         if len(unsupported_layers):
-            self.plugin.add_extension(cpu_extension, device)
+            log.error("There were unsupported layers on the network, try checking if path \
+                      on --cpu_extension is correct. The unsupported layers were: {0}\
+                      ".format(unsupported_layers))
+            sys.exit(1)
 
         # Load the IENetwork into the plugin
         self.exec_network = self.plugin.load_network(self.network, device)
@@ -86,6 +93,12 @@ class Network:
         '''
         Gets the input shape of the network
         '''
+        
+        # Faster RCNN
+        # input_shapes = {}
+        # for inp in self.network.inputs:
+        #     input_shapes[inp] = (self.network.inputs[inp].shape)
+        # return input_shapes
         return self.network.inputs[self.input_blob].shape
 
     def exec_net(self, request_id, net_input):
