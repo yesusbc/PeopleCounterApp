@@ -47,8 +47,8 @@ https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_
 Or you can use any of the already pretained models offered by Intel. As a recommendation I used:
 https://docs.openvinotoolkit.org/latest/_models_intel_person_detection_retail_0013_description_person_detection_retail_0013.html
  ```
-wget "model-url
-tar -xvf “folder”.tar.gz
+cd /opt/intel/openvino/deployment_tools/open_model_zoo/tools/downloader
+sudo ./downloader.py --name person-detection-retail-0013 -o /home/workspace
  ```
 
 ### Install Nodejs and its dependencies
