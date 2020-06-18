@@ -41,10 +41,10 @@ https://docs.openvinotoolkit.org/latest/index.html
 
 ### Add a Person Detection Model
 You could download any model of your selection and then convert it to an OpenVino Intermediate Representation
+Follow this link for extra information
 https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_Converting_Model.html
-Follow that link for extra information
 
-Or you can use any of the already pretained models offer by Intel. As a recommendation I used:
+Or you can use any of the already pretained models offered by Intel. As a recommendation I used:
 https://docs.openvinotoolkit.org/latest/_models_intel_person_detection_retail_0013_description_person_detection_retail_0013.html
  ```
 wget "model-url
