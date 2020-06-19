@@ -193,7 +193,7 @@ def infer_on_stream(args, client):
             detection_in_frame = False
                 
             
-            if frame_detection_counter == 5 and is_person_in_frame == False:
+            if frame_detection_counter == 20 and is_person_in_frame == False:
                 # There was no people at frame, but now there is so start timer and count person
                 is_person_in_frame = True
                 time_tracker = time.time()
@@ -201,7 +201,7 @@ def infer_on_stream(args, client):
                 frame_detection_counter = 0
                 none_detection_counter = 0
             
-            elif none_detection_counter == 5 and is_person_in_frame == True:
+            elif none_detection_counter == 20 and is_person_in_frame == True:
                 # There was people in frame, now there is not, stop timer and reset counter
                 # Add # of people to counter
                 is_person_in_frame = False
