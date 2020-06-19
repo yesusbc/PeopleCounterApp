@@ -41,14 +41,14 @@ https://docs.openvinotoolkit.org/latest/index.html
 
 ### Add a Person Detection Model
 You could download any model of your selection and then convert it to an OpenVino Intermediate Representation
+Follow this link for extra information
 https://docs.openvinotoolkit.org/latest/_docs_MO_DG_prepare_model_convert_model_Converting_Model.html
-Follow that link for extra information
 
-Or you can use any of the already pretained models offer by Intel. As a recommendation I used:
+Or you can use any of the already pretained models offered by Intel. As a recommendation I used:
 https://docs.openvinotoolkit.org/latest/_models_intel_person_detection_retail_0013_description_person_detection_retail_0013.html
  ```
-wget "model-url
-tar -xvf “folder”.tar.gz
+cd /opt/intel/openvino/deployment_tools/open_model_zoo/tools/downloader
+sudo ./downloader.py --name person-detection-retail-0013 -o /home/workspace
  ```
 
 ### Install Nodejs and its dependencies
@@ -150,6 +150,17 @@ When running Intel® Distribution of OpenVINO™ toolkit Python applications on 
 
 Though by default application runs on CPU, this can also be explicitly specified by ```-d CPU``` command-line argument:
 
+##### On Video
 ```
-python main.py -i resources/Pedestrian_Detect_2_1_1.mp4 -m your-model.xml -l /opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so -d CPU -pt 0.6 | ffmpeg -v warning -f rawvideo -pixel_format bgr24 -video_size 768x432 -framerate 24 -i - http://0.0.0.0:3004/fac.ffm
+python main.py -i resources/Pedestrian_Detect_2_1_1.mp4 -m model/person-detection-retail-0013.xml -l /opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so -d CPU -pt 0.6 | ffmpeg -v warning -f rawvideo -pixel_format bgr24 -video_size 768x432 -framerate 24 -i - http://0.0.0.0:3004/fac.ffm
+```
+
+##### On Image
+```
+python main.py -i images/people-counter-image.png -m model/person-detection-retail-0013.xml -l /opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so -d CPU -pt 0.6
+```
+
+##### On Webcam
+```
+python main.py -i CAM -m model/person-detection-retail-0013.xml -l /opt/intel/openvino/deployment_tools/inference_engine/lib/intel64/libcpu_extension_sse4.so -d CPU -pt 0.6 | ffmpeg -v warning -f rawvideo -pixel_format bgr24 -video_size 768x432 -framerate 24 -i - http://0.0.0.0:3004/fac.ffm
 ```
