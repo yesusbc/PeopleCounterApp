@@ -1,4 +1,4 @@
-# People Counter App at the Edge
+# People Counter App at the Edge - Intel Edge AI for IoT Developers Nanodegree
 
 | Details            |              |
 |-----------------------|---------------|
