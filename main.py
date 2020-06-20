@@ -102,7 +102,7 @@ def infer_on_stream(args, client):
     total_people_count = 0
 
     # Time trackers
-    time_tracker = 0
+    frames_with_person = 0
     time_avg = 0
     duration = 0
     
@@ -138,6 +138,9 @@ def infer_on_stream(args, client):
     cap = cv2.VideoCapture(input_file)
     if input_file:
         cap.open(input_file)
+        
+    # Frames per second
+    fps = cap.get(cv2.CAP_PROP_FPS)
     
     # Loop until stream is over
     while cap.isOpened():
@@ -191,12 +194,14 @@ def infer_on_stream(args, client):
                 
             # Reset flag
             detection_in_frame = False
-                
+            
+            # If there is a person in frame, start counter
+            if is_person_in_frame:
+                frames_with_person += 1
             
             if frame_detection_counter == 20 and is_person_in_frame == False:
                 # There was no people at frame, but now there is so start timer and count person
                 is_person_in_frame = True
-                time_tracker = time.time()
                 # Reset counters
                 frame_detection_counter = 0
                 none_detection_counter = 0
@@ -206,13 +211,12 @@ def infer_on_stream(args, client):
                 # Add # of people to counter
                 is_person_in_frame = False
                 total_people_count += last_count_of_people_in_frame
-                time_tracker = time.time() - time_tracker
-                time_avg += time_tracker
+                time_avg += (frames_with_person / fps)
                 duration = round(time_avg / total_people_count)
                 # Reset counters
                 frame_detection_counter = 0
                 none_detection_counter = 0
-                time_tracker = 0
+                frames_with_person = 0
                 
             ### current_count, total_count and duration to the MQTT server ###
             ### Topic "person": keys of "count" and "total" ###
